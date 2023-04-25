@@ -1,39 +1,45 @@
 import sys
-import gym
+import gymnasium as gym
 
 from elegantrl.train.run import train_and_evaluate, train_and_evaluate_mp
 from elegantrl.train.config import Arguments
-from elegantrl.agents.AgentA2C import AgentA2C
-from elegantrl.agents.AgentPPO import AgentPPO, AgentPPOHterm, AgentPPOHtermKV2, AgentPPOHtermK
+from elegantrl.agents.AgentPPO import (
+    AgentPPO,
+    AgentPPOHtermKV2,
+    AgentPPOHtermK,
+)
 
 
 def demo_a2c_ppo(gpu_id, drl_id, env_id):
-    env_name = ['Pendulum-v0',
-                'Pendulum-v1',
-                'LunarLanderContinuous-v2',
-                'BipedalWalker-v3',
-                'Hopper-v2',
-                'HalfCheetah-v3',
-                'Humanoid-v3', ][env_id]
-    agent_class = [AgentA2C, AgentPPO][drl_id]
+    env_name = [
+        "Pendulum-v0",
+        "Pendulum-v1",
+        "LunarLanderContinuous-v2",
+        "BipedalWalker-v3",
+        "Hopper-v2",
+        "HalfCheetah-v3",
+        "Humanoid-v3",
+    ][env_id]
+    agent_class = [AgentPPO][drl_id]
 
-    if env_name in {'Pendulum-v0', 'Pendulum-v1'}:
+    if env_name in {"Pendulum-v0", "Pendulum-v1"}:
         from elegantrl.envs.CustomGymEnv import PendulumEnv
+
         env = PendulumEnv(env_name, target_return=-500)
         "TotalStep: 1e5, TargetReward: -200, UsedTime: 600s"
         args = Arguments(agent_class, env=env)
-        args.reward_scale = 2 ** -1  # RewardRange: -1800 < -200 < -50 < 0
+        args.reward_scale = 2**-1  # RewardRange: -1800 < -200 < -50 < 0
         args.gamma = 0.97
         args.target_step = args.max_step * 8
         # args.eval_times = 2 ** 3
 
         args.gamma = 0.95
         args.target_step = args.max_step * 16
-        args.net_dim = 2 ** 7
-        args.eval_times = 2 ** 6
+        args.net_dim = 2**7
+        args.eval_times = 2**6
         args.break_step = 6e5  # todo
         args.if_allow_break = False
-    elif env_name == 'LunarLanderContinuous-v2':
+    elif env_name == "LunarLanderContinuous-v2":
         """
         ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         1  8.12e+03 -133.73 | -133.73   51.5     74    12 |   -0.59   9.57   0.02  -0.50
@@ -56,30 +62,31 @@ def demo_a2c_ppo(gpu_id, drl_id, env_id):
         | UsedTime:    3742 |
         """
         env_func = gym.make
-        env_args = {'env_num': 1,
-                    'env_name': 'LunarLanderContinuous-v2',
-                    'max_step': 1000,
-                    'state_dim': 8,
-                    'action_dim': 2,
-                    'if_discrete': False,
-                    'target_return': 200,
-
-                    'id': 'LunarLanderContinuous-v2'}
+        env_args = {
+            "env_num": 1,
+            "env_name": "LunarLanderContinuous-v2",
+            "max_step": 1000,
+            "state_dim": 8,
+            "action_dim": 2,
+            "if_discrete": False,
+            "target_return": 200,
+            "id": "LunarLanderContinuous-v2",
+        }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
 
         args.target_step = args.max_step * 2
-        args.reward_scale = 2 ** -1
+        args.reward_scale = 2**-1
         args.gamma = 0.99
 
-        args.net_dim = 2 ** 7
+        args.net_dim = 2**7
         args.num_layer = 3
         args.batch_size = int(args.net_dim * 2)
-        args.repeat_times = 2 ** 4
+        args.repeat_times = 2**4
 
-        args.eval_times = 2 ** 5
+        args.eval_times = 2**5
 
-        args.lambda_h_term = 2 ** -5
-    elif env_name == 'BipedalWalker-v3':
+        args.lambda_h_term = 2**-5
+    elif env_name == "BipedalWalker-v3":
         """
         ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         0  2.86e+04  -99.74 |  -99.74    1.4    112     5 |   -0.09   0.92   0.05  -0.53
@@ -102,32 +109,34 @@ def demo_a2c_ppo(gpu_id, drl_id, env_id):
         | UsedTime:    3704 |
         """
         env_func = gym.make
-        env_args = {'env_num': 1,
-                    'env_name': 'BipedalWalker-v3',
-                    'max_step': 1600,
-                    'state_dim': 24,
-                    'action_dim': 4,
-                    'if_discrete': False,
-                    'target_return': 300, }
+        env_args = {
+            "env_num": 1,
+            "env_name": "BipedalWalker-v3",
+            "max_step": 1600,
+            "state_dim": 24,
+            "action_dim": 4,
+            "if_discrete": False,
+            "target_return": 300,
+        }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
 
         args.gamma = 0.98
-        args.eval_times = 2 ** 4
-        args.reward_scale = 2 ** -1
+        args.eval_times = 2**4
+        args.reward_scale = 2**-1
 
         args.target_step = args.max_step * 4
         args.worker_num = 2
-        args.net_dim = 2 ** 7
+        args.net_dim = 2**7
         args.num_layer = 3
         args.batch_size = int(args.net_dim * 2)
-        args.repeat_times = 2 ** 4
+        args.repeat_times = 2**4
         args.ratio_clip = 0.25
         args.lambda_gae_adv = 0.96
         args.lambda_entropy = 0.02
         args.if_use_gae = True
 
-        args.lambda_h_term = 2 ** -5
-    elif env_name == 'Hopper-v2':
+        args.lambda_h_term = 2**-5
+    elif env_name == "Hopper-v2":
         """
         ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         5  1.61e+04  131.99 |  131.99    3.6     81     2 |    0.03   0.09   0.03  -0.54
@@ -162,65 +171,65 @@ def demo_a2c_ppo(gpu_id, drl_id, env_id):
         """
         env_func = gym.make
         env_args = {
-            'env_num': 1,
-            'env_name': 'Hopper-v2',
-            'max_step': 1000,
-            'state_dim': 11,
-            'action_dim': 3,
-            'if_discrete': False,
-            'target_return': 3800.,
+            "env_num": 1,
+            "env_name": "Hopper-v2",
+            "max_step": 1000,
+            "state_dim": 11,
+            "action_dim": 3,
+            "if_discrete": False,
+            "target_return": 3800.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.eval_times = 2 ** 2
-        args.reward_scale = 2 ** -4
+        args.eval_times = 2**2
+        args.reward_scale = 2**-4
 
         args.target_step = args.max_step * 4  # 6
         args.worker_num = 2
 
-        args.net_dim = 2 ** 7
+        args.net_dim = 2**7
         args.num_layer = 3
         args.batch_size = int(args.net_dim * 2)
-        args.repeat_times = 2 ** 4
+        args.repeat_times = 2**4
         args.ratio_clip = 0.1
 
         args.gamma = 0.98
         args.lambda_gae_adv = 0.92
         args.if_use_gae = True
-        args.lambda_entropy = 2 ** -8
-        args.lambda_h_term = 2 ** -5
+        args.lambda_entropy = 2**-8
+        args.lambda_h_term = 2**-5
 
         args.if_allow_break = False
         args.break_step = int(8e6)
-    elif env_name == 'HalfCheetah-v3':
+    elif env_name == "HalfCheetah-v3":
         env_func = gym.make
         env_args = {
-            'env_num': 1,
-            'env_name': 'HalfCheetah-v3',
-            'max_step': 1000,
-            'state_dim': 17,
-            'action_dim': 6,
-            'if_discrete': False,
-            'target_return': 4800.0,
+            "env_num": 1,
+            "env_name": "HalfCheetah-v3",
+            "max_step": 1000,
+            "state_dim": 17,
+            "action_dim": 6,
+            "if_discrete": False,
+            "target_return": 4800.0,
         }
 
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.eval_times = 2 ** 2
-        args.reward_scale = 2 ** -3
+        args.eval_times = 2**2
+        args.reward_scale = 2**-3
 
         args.target_step = args.max_step * 4
         args.worker_num = 2
 
-        args.net_dim = 2 ** 8
+        args.net_dim = 2**8
         args.num_layer = 3
         args.batch_size = int(args.net_dim * 2)
-        args.repeat_times = 2 ** 4
+        args.repeat_times = 2**4
         args.ratio_clip = 0.3
         args.gamma = 0.99
         args.lambda_gae_adv = 0.96
         args.if_use_gae = True
         args.clip_grad_norm = 0.8
 
-        args.lambda_entropy = 2 ** -6
+        args.lambda_entropy = 2**-6
         # args.lambda_h_term = 2 ** -5
 
         args.if_allow_break = False
@@ -286,37 +295,38 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 | UsedTime:    4696 | SavedDir: ./HalfCheetah-v3_PPO_4
 
         """
-    elif env_name == 'Humanoid-v3':
+    elif env_name == "Humanoid-v3":
         from elegantrl.envs.CustomGymEnv import HumanoidEnv
+
         env_func = HumanoidEnv
         env_args = {
-            'env_num': 1,
-            'env_name': 'Humanoid-v3',
-            'max_step': 1000,
-            'state_dim': 376,
-            'action_dim': 17,
-            'if_discrete': False,
-            'target_return': 8000.,
+            "env_num": 1,
+            "env_name": "Humanoid-v3",
+            "max_step": 1000,
+            "state_dim": 376,
+            "action_dim": 17,
+            "if_discrete": False,
+            "target_return": 8000.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.reward_scale = 2 ** -4
+        args.reward_scale = 2**-4
 
         args.if_cri_target = False
 
         args.target_step = args.max_step * 8
         args.worker_num = 4
-        args.net_dim = 2 ** 8
+        args.net_dim = 2**8
         args.batch_size = args.net_dim * 2
-        args.repeat_times = 2 ** 5
+        args.repeat_times = 2**5
         args.gamma = 0.985  # important
         args.lambda_gae_adv = 0.93
         args.if_use_gae = True
-        args.learning_rate = 2 ** -15
+        args.learning_rate = 2**-15
 
         args.lambda_entropy = 0.01
 
-        args.eval_gap = 2 ** 9
-        args.eval_times = 2 ** 2
+        args.eval_gap = 2**9
+        args.eval_times = 2**2
         args.break_step = int(6e7)
 
         """
@@ -656,42 +666,43 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 | UsedTime:  158271 | SavedDir: ./Humanoid-v3_PPO_1
 | Learner: Save in ./Humanoid-v3_PPO_1
         """
-    elif env_name == 'Humanoid-v3.7509.target_step = args.max_step * 4  GPU4':
+    elif env_name == "Humanoid-v3.7509.target_step = args.max_step * 4  GPU4":
         from elegantrl.envs.CustomGymEnv import HumanoidEnv
+
         env_func = HumanoidEnv
         env_args = {
-            'env_num': 1,
-            'env_name': 'Humanoid-v3',
-            'max_step': 1000,
-            'state_dim': 376,
-            'action_dim': 17,
-            'if_discrete': False,
-            'target_return': 8000.,
+            "env_num": 1,
+            "env_name": "Humanoid-v3",
+            "max_step": 1000,
+            "state_dim": 376,
+            "action_dim": 17,
+            "if_discrete": False,
+            "target_return": 8000.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.reward_scale = 2 ** -4
+        args.reward_scale = 2**-4
 
         args.if_cri_target = False
 
         args.target_step = args.max_step * 8
         args.worker_num = 4
-        args.net_dim = 2 ** 8
+        args.net_dim = 2**8
         args.batch_size = args.net_dim * 2
-        args.repeat_times = 2 ** 5
+        args.repeat_times = 2**5
         args.gamma = 0.985  # important
         args.lambda_gae_adv = 0.93
         args.if_use_gae = True
-        args.learning_rate = 2 ** -15
+        args.learning_rate = 2**-15
 
-        args.net_dim = 2 ** 9
+        args.net_dim = 2**9
         args.batch_size = args.net_dim * 2
         args.target_step = args.max_step * 4  # todo
-        args.repeat_times = 2 ** 4
+        args.repeat_times = 2**4
 
         args.lambda_entropy = 0.01
 
-        args.eval_gap = 2 ** 9
-        args.eval_times = 2 ** 2
+        args.eval_gap = 2**9
+        args.eval_times = 2**2
         args.break_step = int(6e7)
 
         """
@@ -840,20 +851,21 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 | UsedTime:  141195 | SavedDir: ./Humanoid-v3_PPO_4
 | Learner: Save in ./Humanoid-v3_PPO_4
         """
-    elif env_name == 'Humanoid-v3.6171.higher and 4244.faster':
+    elif env_name == "Humanoid-v3.6171.higher and 4244.faster":
         from elegantrl.envs.CustomGymEnv import HumanoidEnv
+
         env_func = HumanoidEnv
         env_args = {
-            'env_num': 1,
-            'env_name': 'Humanoid-v3',
-            'max_step': 1000,
-            'state_dim': 376,
-            'action_dim': 17,
-            'if_discrete': False,
-            'target_return': 8000.,
+            "env_num": 1,
+            "env_name": "Humanoid-v3",
+            "max_step": 1000,
+            "state_dim": 376,
+            "action_dim": 17,
+            "if_discrete": False,
+            "target_return": 8000.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.reward_scale = 2 ** -4
+        args.reward_scale = 2**-4
 
         args.if_cri_target = False
         #
@@ -863,19 +875,19 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         # args.batch_size = args.net_dim * 8
         # args.repeat_times = 2 ** 6
 
-        args.learning_rate = 2 ** -16
+        args.learning_rate = 2**-16
         args.target_step = args.max_step * 8
         args.worker_num = 4
         args.batch_size = args.net_dim * 2
-        args.repeat_times = 2 ** 5
+        args.repeat_times = 2**5
         args.gamma = 0.985  # important
         args.lambda_gae_adv = 0.93
-        args.learning_rate = 2 ** -14  # todo
+        args.learning_rate = 2**-14  # todo
 
         args.if_use_gae = True
         args.lambda_entropy = 0.01
 
-        args.eval_times = 2 ** 2
+        args.eval_times = 2**2
         args.break_step = int(6e7)
 
         # higher
@@ -1491,20 +1503,21 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 3  1.99e+07 4244.42 | 2743.90    0.0    435     0 |    0.38   0.46   0.04   0.00
 3  2.01e+07 4244.42 | 2811.98    0.0    474     0 |    0.38   0.41   0.09   0.00
         """
-    elif env_name == 'Humanoid-v3.5391.best1 gamma=0.985':
+    elif env_name == "Humanoid-v3.5391.best1 gamma=0.985":
         from elegantrl.envs.CustomGymEnv import HumanoidEnv
+
         env_func = HumanoidEnv
         env_args = {
-            'env_num': 1,
-            'env_name': 'Humanoid-v3',
-            'max_step': 1000,
-            'state_dim': 376,
-            'action_dim': 17,
-            'if_discrete': False,
-            'target_return': 8000.,
+            "env_num": 1,
+            "env_name": "Humanoid-v3",
+            "max_step": 1000,
+            "state_dim": 376,
+            "action_dim": 17,
+            "if_discrete": False,
+            "target_return": 8000.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.reward_scale = 2 ** -4
+        args.reward_scale = 2**-4
 
         args.if_cri_target = False
         #
@@ -1514,18 +1527,18 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         # args.batch_size = args.net_dim * 8
         # args.repeat_times = 2 ** 6
 
-        args.learning_rate = 2 ** -16
+        args.learning_rate = 2**-16
         args.target_step = args.max_step * 8
         args.worker_num = 4
         args.batch_size = args.net_dim * 2
-        args.repeat_times = 2 ** 5
+        args.repeat_times = 2**5
         args.gamma = 0.985  # important
         args.lambda_gae_adv = 0.93
 
         args.if_use_gae = True
         args.lambda_entropy = 0.01
 
-        args.eval_times = 2 ** 2
+        args.eval_times = 2**2
         args.break_step = int(6e7)
 
         """
@@ -1645,28 +1658,29 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 | Learner: Save in ./Humanoid-v3_PPO_1
 
         """
-    elif env_name == 'Humanoid-v3.5226.best2 gamma=0.993':
+    elif env_name == "Humanoid-v3.5226.best2 gamma=0.993":
         from elegantrl.envs.CustomGymEnv import HumanoidEnv
+
         env_func = HumanoidEnv
         env_args = {
-            'env_num': 1,
-            'env_name': 'Humanoid-v3',
-            'max_step': 1000,
-            'state_dim': 376,
-            'action_dim': 17,
-            'if_discrete': False,
-            'target_return': 8000.,
+            "env_num": 1,
+            "env_name": "Humanoid-v3",
+            "max_step": 1000,
+            "state_dim": 376,
+            "action_dim": 17,
+            "if_discrete": False,
+            "target_return": 8000.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.reward_scale = 2 ** -4
+        args.reward_scale = 2**-4
 
         args.if_cri_target = False
 
-        args.learning_rate = 2 ** -16
+        args.learning_rate = 2**-16
         args.target_step = args.max_step * 8
         args.worker_num = 4
         args.batch_size = args.net_dim * 2
-        args.repeat_times = 2 ** 5
+        args.repeat_times = 2**5
 
         args.gamma = 0.993  # important
         args.lambda_gae_adv = 0.96
@@ -1674,7 +1688,7 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         args.if_use_gae = True
         args.lambda_entropy = 0.01
 
-        args.eval_times = 2 ** 2
+        args.eval_times = 2**2
         args.break_step = int(6e7)
 
         """
@@ -1794,34 +1808,35 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 | UsedTime:   11656 | SavedDir: ./Humanoid-v3_PPO_4
 
         """
-    elif env_name == 'Humanoid-v3.backup.5135':
+    elif env_name == "Humanoid-v3.backup.5135":
         from elegantrl.envs.CustomGymEnv import HumanoidEnv
+
         env_func = HumanoidEnv
         env_args = {
-            'env_num': 1,
-            'env_name': 'Humanoid-v3',
-            'max_step': 1000,
-            'state_dim': 376,
-            'action_dim': 17,
-            'if_discrete': False,
-            'target_return': 5000.,
+            "env_num": 1,
+            "env_name": "Humanoid-v3",
+            "max_step": 1000,
+            "state_dim": 376,
+            "action_dim": 17,
+            "if_discrete": False,
+            "target_return": 5000.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.reward_scale = 2 ** -5
+        args.reward_scale = 2**-5
 
-        args.learning_rate = 2 ** -15
+        args.learning_rate = 2**-15
         args.num_layer = 3
-        args.net_dim = 2 ** 9  # todo
+        args.net_dim = 2**9  # todo
         args.target_step = args.max_step * 8
         args.worker_num = 4
         args.batch_size = args.net_dim * 2
-        args.repeat_times = 2 ** 5
+        args.repeat_times = 2**5
         args.gamma = 0.995  # important
         args.if_use_gae = True
         args.lambda_gae_adv = 0.98
         args.lambda_entropy = 0.01
 
-        args.eval_times = 2 ** 2
+        args.eval_times = 2**2
         args.break_step = int(5e7)
 
         """
@@ -2065,20 +2080,21 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 | Learner: Save in ./Humanoid-v3_PPO_4
 
         """
-    elif env_name == 'Humanoid-v3.3023':
+    elif env_name == "Humanoid-v3.3023":
         from elegantrl.envs.CustomGymEnv import HumanoidEnv
+
         env_func = HumanoidEnv
         env_args = {
-            'env_num': 1,
-            'env_name': 'Humanoid-v3',
-            'max_step': 1000,
-            'state_dim': 376,
-            'action_dim': 17,
-            'if_discrete': False,
-            'target_return': 5000.,
+            "env_num": 1,
+            "env_name": "Humanoid-v3",
+            "max_step": 1000,
+            "state_dim": 376,
+            "action_dim": 17,
+            "if_discrete": False,
+            "target_return": 5000.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.reward_scale = 2 ** -4
+        args.reward_scale = 2**-4
 
         args.if_cri_target = False
         #
@@ -2088,16 +2104,16 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         # args.batch_size = args.net_dim * 8
         # args.repeat_times = 2 ** 6
 
-        args.learning_rate = 2 ** -16
+        args.learning_rate = 2**-16
         args.target_step = args.max_step * 8
         args.worker_num = 4
         args.batch_size = args.net_dim * 2
-        args.repeat_times = 2 ** 5
+        args.repeat_times = 2**5
         args.gamma = 0.995  # important
         args.if_use_gae = True
         args.lambda_entropy = 0.01
 
-        args.eval_times = 2 ** 2
+        args.eval_times = 2**2
         args.break_step = int(4e7)
         """
         | Arguments Remove cwd: ./Humanoid-v3_PPO_3
@@ -2236,7 +2252,7 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         | Learner: Save in ./Humanoid-v3_PPO_3
         """
     else:
-        raise ValueError('env_name:', env_name)
+        raise ValueError("env_name:", env_name)
 
     args.learner_gpus = gpu_id
     args.random_seed += gpu_id
@@ -2249,18 +2265,21 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 
 
 def demo_ppo_h_term(gpu_id, drl_id, env_id):
-    env_name = ['Hopper-v2',
-                'Ant-v3',
-                'Humanoid-v3',
-                'HalfCheetah-v3',
-                'Walker2d-v3',
-                ][env_id]
-    agent_class = [AgentA2C, AgentPPO, AgentPPOHterm, AgentPPOHtermKV2, AgentPPOHtermK][drl_id]
+    env_name = [
+        "Hopper-v2",
+        "Ant-v3",
+        "Humanoid-v3",
+        "HalfCheetah-v3",
+        "Walker2d-v3",
+    ][env_id]
+    agent_class = [AgentA2C, AgentPPO, AgentPPOHterm, AgentPPOHtermKV2, AgentPPOHtermK][
+        drl_id
+    ]
     # from elegantrl.train.config import get_gym_env_args
     # get_gym_env_args(gym.make(env_name), if_print=True)
     # exit()
 
-    if env_name == 'Hopper-v2':
+    if env_name == "Hopper-v2":
         """
         ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         5  1.61e+04  131.99 |  131.99    3.6     81     2 |    0.03   0.09   0.03  -0.54
@@ -2295,26 +2314,26 @@ def demo_ppo_h_term(gpu_id, drl_id, env_id):
         """
         env_func = gym.make
         env_args = {
-            'env_num': 1,
-            'env_name': 'Hopper-v2',
-            'max_step': 1000,
-            'state_dim': 11,
-            'action_dim': 3,
-            'if_discrete': False,
-            'target_return': 3500.,
+            "env_num": 1,
+            "env_name": "Hopper-v2",
+            "max_step": 1000,
+            "state_dim": 11,
+            "action_dim": 3,
+            "if_discrete": False,
+            "target_return": 3500.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
 
         args.num_layer = 3
-        args.net_dim = 2 ** 8
+        args.net_dim = 2**8
         args.batch_size = int(args.net_dim * 2)
 
         args.worker_num = 2
         args.target_step = args.max_step * 4
-        args.repeat_times = 2 ** 4
-        args.reward_scale = 2 ** -4
+        args.repeat_times = 2**4
+        args.reward_scale = 2**-4
 
-        args.learning_rate = 2 ** -15
+        args.learning_rate = 2**-15
         args.clip_grad_norm = 1.0
         args.lambda_entropy = 0.05
         args.gamma = 0.993
@@ -2323,18 +2342,18 @@ def demo_ppo_h_term(gpu_id, drl_id, env_id):
         args.if_use_gae = True
         args.ratio_clip = 0.20
 
-        '''H-term'''
-        args.h_term_sample_rate = 2 ** -2
-        args.h_term_drop_rate = 2 ** -3
-        args.h_term_lambda = 2 ** -3
+        """H-term"""
+        args.h_term_sample_rate = 2**-2
+        args.h_term_drop_rate = 2**-3
+        args.h_term_lambda = 2**-3
         args.act_update_gap = 1
         if gpu_id == 2:
             args.h_term_k_step = 16
         if gpu_id == 3:
             args.h_term_k_step = 64
 
-        args.eval_times = 2 ** 1
-        args.eval_gap = 2 ** 8
+        args.eval_times = 2**1
+        args.eval_gap = 2**8
         args.if_allow_break = False
         args.break_step = int(2e6)
 
@@ -2481,25 +2500,25 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 | UsedTime:    2161 | SavedDir: ./Hopper-v2_PPOHterm_7
 
         """
-    elif env_name == 'Ant-v3':
+    elif env_name == "Ant-v3":
         env_func = gym.make
         env_args = {
-            'env_num': 1,
-            'env_name': 'Ant-v3',
-            'max_step': 1000,
-            'state_dim': 111,
-            'action_dim': 8,
-            'if_discrete': False,
-            'target_return': 6000.0,
+            "env_num": 1,
+            "env_name": "Ant-v3",
+            "max_step": 1000,
+            "state_dim": 111,
+            "action_dim": 8,
+            "if_discrete": False,
+            "target_return": 6000.0,
         }
 
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.reward_scale = 2 ** -4
+        args.reward_scale = 2**-4
 
         args.if_cri_target = False
 
         args.num_layer = 3
-        args.learning_rate = 2 ** -14
+        args.learning_rate = 2**-14
 
         args.target_step = args.max_step * 2
         args.worker_num = 4
@@ -2507,25 +2526,25 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         args.gamma = 0.985
         args.lambda_gae_adv = 0.8
         args.if_use_gae = True
-        args.lambda_entropy = 2 ** -9
+        args.lambda_entropy = 2**-9
 
-        args.net_dim = 2 ** 9
+        args.net_dim = 2**9
         args.batch_size = int(args.net_dim * 2)
-        args.repeat_times = 2 ** 4
+        args.repeat_times = 2**4
         args.clip_grad_norm = 1.0
 
-        '''H-term'''
-        args.h_term_sample_rate = 2 ** -2
+        """H-term"""
+        args.h_term_sample_rate = 2**-2
         args.act_update_gap = 2
         if gpu_id == 6:
-            args.h_term_drop_rate = 2 ** -3
-            args.h_term_lambda = 2 ** -6
+            args.h_term_drop_rate = 2**-3
+            args.h_term_lambda = 2**-6
         if gpu_id == 7:
-            args.h_term_drop_rate = 2 ** -2
-            args.h_term_lambda = 2 ** -6
+            args.h_term_drop_rate = 2**-2
+            args.h_term_lambda = 2**-6
 
-        args.eval_gap = 2 ** 8
-        args.eval_times = 2 ** 2
+        args.eval_gap = 2**8
+        args.eval_times = 2**2
         args.break_step = int(6e6)
         args.if_allow_break = False
         """
@@ -2558,40 +2577,41 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 
 
 """
-    elif env_name == 'Humanoid-v3':
+    elif env_name == "Humanoid-v3":
         from elegantrl.envs.CustomGymEnv import HumanoidEnv
+
         env_func = HumanoidEnv
         env_args = {
-            'env_num': 1,
-            'env_name': 'Humanoid-v3',
-            'max_step': 1000,
-            'state_dim': 376,
-            'action_dim': 17,
-            'if_discrete': False,
-            'target_return': 8000.,
+            "env_num": 1,
+            "env_name": "Humanoid-v3",
+            "max_step": 1000,
+            "state_dim": 376,
+            "action_dim": 17,
+            "if_discrete": False,
+            "target_return": 8000.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.reward_scale = 2 ** -4
+        args.reward_scale = 2**-4
 
         args.if_cri_target = False
 
         args.target_step = args.max_step * 8
         args.worker_num = 4
-        args.net_dim = 2 ** 9
+        args.net_dim = 2**9
         args.batch_size = args.net_dim * 2
-        args.repeat_times = 2 ** 4
+        args.repeat_times = 2**4
         args.gamma = 0.985  # important
         args.lambda_gae_adv = 0.93
         args.if_use_gae = True
-        args.learning_rate = 2 ** -15
+        args.learning_rate = 2**-15
         args.lambda_entropy = 0.01
 
-        args.lambda_entropy = 2 ** -3
-        args.h_term_drop_rate = 2 ** -2
-        args.h_term_lambda = 2 ** -6
+        args.lambda_entropy = 2**-3
+        args.h_term_drop_rate = 2**-2
+        args.h_term_lambda = 2**-6
 
-        args.eval_gap = 2 ** 9
-        args.eval_times = 2 ** 1
+        args.eval_gap = 2**9
+        args.eval_times = 2**1
         args.break_step = int(6e7)
         """
 ################################################################################
@@ -2946,40 +2966,40 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 5  5.95e+07 5421.37 | 3155.20    0.0    528     0 |    0.38   0.96   0.13  -1.12
 | UsedTime:   33554 | SavedDir: ./Humanoid-v3_PPOHterm_5
         """
-    elif env_name == 'HalfCheetah-v3':
+    elif env_name == "HalfCheetah-v3":
         env_func = gym.make
         env_args = {
-            'env_num': 1,
-            'env_name': 'HalfCheetah-v3',
-            'max_step': 1000,
-            'state_dim': 17,
-            'action_dim': 6,
-            'if_discrete': False,
-            'target_return': 4800.0,
+            "env_num": 1,
+            "env_name": "HalfCheetah-v3",
+            "max_step": 1000,
+            "state_dim": 17,
+            "action_dim": 6,
+            "if_discrete": False,
+            "target_return": 4800.0,
         }
 
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
-        args.eval_times = 2 ** 2
-        args.reward_scale = 2 ** -5
+        args.eval_times = 2**2
+        args.reward_scale = 2**-5
 
         args.target_step = args.max_step * 2
         args.worker_num = 2
 
-        args.net_dim = 2 ** 7
+        args.net_dim = 2**7
         args.num_layer = 3
         args.batch_size = int(args.net_dim * 2)
-        args.repeat_times = 2 ** 5
+        args.repeat_times = 2**5
         args.ratio_clip = 0.3
         args.gamma = 0.99
         args.lambda_gae_adv = 0.96
         args.if_use_gae = True
         args.clip_grad_norm = 0.8
 
-        args.lambda_entropy = 2 ** -6
+        args.lambda_entropy = 2**-6
 
-        args.h_term_drop_rate = 2 ** -4
-        args.h_term_lambda = 2 ** -6
-        args.h_term_sample_rate = 2 ** -4
+        args.h_term_drop_rate = 2**-4
+        args.h_term_lambda = 2**-6
+        args.h_term_sample_rate = 2**-4
 
         args.if_allow_break = False
         args.break_step = int(8e7)
@@ -3840,53 +3860,53 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
 | UsedTime:   50393 | SavedDir: ./HalfCheetah-v3_PPOHterm_7
 | Learner: Save in ./HalfCheetah-v3_PPOHterm_7
         """
-    elif env_name == 'Walker2d-v3':
+    elif env_name == "Walker2d-v3":
         env_func = gym.make
         env_args = {
-            'env_num': 1,
-            'env_name': 'Walker2d-v3',
-            'if_discrete': False,
-            'max_step': 1000,
-            'state_dim': 17,
-            'action_dim': 6,
-            'target_return': 65536
+            "env_num": 1,
+            "env_name": "Walker2d-v3",
+            "if_discrete": False,
+            "max_step": 1000,
+            "state_dim": 17,
+            "action_dim": 6,
+            "target_return": 65536,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
 
         args.num_layer = 3
-        args.net_dim = 2 ** 7
+        args.net_dim = 2**7
         args.batch_size = int(args.net_dim * 2)
 
         args.worker_num = 2
         args.target_step = args.max_step * 4
-        args.repeat_times = 2 ** 6
-        args.reward_scale = 2 ** -3
+        args.repeat_times = 2**6
+        args.reward_scale = 2**-3
 
-        args.learning_rate = 2 ** -15
+        args.learning_rate = 2**-15
         args.clip_grad_norm = 2.0
         args.gamma = 0.99
 
         args.lambda_gae_adv = 0.95
         args.if_use_gae = True
         args.ratio_clip = 0.10
-        args.lambda_entropy = 2 ** -6
+        args.lambda_entropy = 2**-6
 
         args.target_step = args.max_step * 2
         args.worker_num = 2
 
-        '''H-term'''
-        args.h_term_sample_rate = 2 ** -2
-        args.h_term_drop_rate = 2 ** -3
-        args.h_term_lambda = 2 ** -3
+        """H-term"""
+        args.h_term_sample_rate = 2**-2
+        args.h_term_drop_rate = 2**-3
+        args.h_term_lambda = 2**-3
         args.h_term_k_step = 4
         args.act_update_gap = 1
 
-        args.eval_times = 2 ** 1
-        args.eval_gap = 2 ** 8
+        args.eval_times = 2**1
+        args.eval_gap = 2**8
         args.if_allow_break = False
         args.break_step = int(2e7)
     else:
-        raise ValueError('env_name:', env_name)
+        raise ValueError("env_name:", env_name)
 
     args.learner_gpus = gpu_id
     args.random_seed += gpu_id + 1423
@@ -3898,8 +3918,10 @@ ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         train_and_evaluate_mp(args)
 
 
-if __name__ == '__main__':
-    GPU_ID = int(sys.argv[1]) if len(sys.argv) > 1 else 0  # >=0 means GPU ID, -1 means CPU
+if __name__ == "__main__":
+    GPU_ID = (
+        int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    )  # >=0 means GPU ID, -1 means CPU
     DRL_ID = int(sys.argv[2]) if len(sys.argv) > 2 else 1
     ENV_ID = int(sys.argv[3]) if len(sys.argv) > 3 else 1
 

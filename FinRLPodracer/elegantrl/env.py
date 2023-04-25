@@ -1,7 +1,8 @@
 import os
-import gym
+import gymnasium as gym
 import torch
 import numpy as np
+
 # import numpy.random as rd
 from copy import deepcopy
 
@@ -19,8 +20,15 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper
         self.env = gym.make(env) if isinstance(env, str) else env
         super().__init__(self.env)
 
-        (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
-         self.if_discrete, self.target_return) = get_gym_env_info(self.env, if_print)
+        (
+            self.env_name,
+            self.state_dim,
+            self.action_dim,
+            self.action_max,
+            self.max_step,
+            self.if_discrete,
+            self.target_return,
+        ) = get_gym_env_info(self.env, if_print)
 
         state_avg, state_std = get_avg_std__for_state_norm(self.env_name)
         self.neg_state_avg = -state_avg
@@ -30,7 +38,7 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper
         self.step = self.step_norm
 
     def reset_norm(self) -> np.ndarray:
-        """ convert the data type of state from float64 to float32
+        """convert the data type of state from float64 to float32
         do normalization on state
 
         return `array state` state.shape==(state_dim, )
@@ -58,7 +66,7 @@ def deepcopy_or_rebuild_env(env):
     try:
         env_eval = deepcopy(env)
     except Exception as error:
-        print('| deepcopy_or_rebuild_env, error:', error)
+        print("| deepcopy_or_rebuild_env, error:", error)
         env_eval = PreprocessEnv(env.env_name, if_print=False)
     return env_eval
 
@@ -80,39 +88,54 @@ def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
     """
     assert isinstance(env, gym.Env)
 
-    env_name = getattr(env, 'env_name', None)
+    env_name = getattr(env, "env_name", None)
     env_name = env.unwrapped.spec.id if env_name is None else None
 
     state_shape = env.observation_space.shape
-    state_dim = state_shape[0] if len(state_shape) == 1 else state_shape  # sometimes state_dim is a list
+    state_dim = (
+        state_shape[0] if len(state_shape) == 1 else state_shape
+    )  # sometimes state_dim is a list
 
-    target_return = getattr(env, 'target_return', None)
-    target_return_default = getattr(env.spec, 'reward_threshold', None)
+    target_return = getattr(env, "target_return", None)
+    target_return_default = getattr(env.spec, "reward_threshold", None)
     if target_return is None:
         target_return = target_return_default
     if target_return is None:
-        target_return = 2 ** 16
+        target_return = 2**16
 
-    max_step = getattr(env, 'max_step', None)
-    max_step_default = getattr(env, '_max_episode_steps', None)
+    max_step = getattr(env, "max_step", None)
+    max_step_default = getattr(env, "_max_episode_steps", None)
     if max_step is None:
         max_step = max_step_default
     if max_step is None:
-        max_step = 2 ** 10
+        max_step = 2**10
 
     if_discrete = isinstance(env.action_space, gym.spaces.Discrete)
     if if_discrete:  # make sure it is discrete action space
         action_dim = env.action_space.n
         action_max = int(1)
-    elif isinstance(env.action_space, gym.spaces.Box):  # make sure it is continuous action space
+    elif isinstance(
+        env.action_space, gym.spaces.Box
+    ):  # make sure it is continuous action space
         action_dim = env.action_space.shape[0]
         action_max = float(env.action_space.high[0])
         assert not any(env.action_space.high + env.action_space.low)
     else:
-        raise RuntimeError('| Please set these value manually: if_discrete=bool, action_dim=int, action_max=1.0')
+        raise RuntimeError(
+            "| Please set these value manually: if_discrete=bool, action_dim=int, action_max=1.0"
+        )
 
-    print(f"\n| env_name:  {env_name}, action if_discrete: {if_discrete}"
-          f"\n| state_dim: {state_dim:4}, action_dim: {action_dim}, action_max: {action_max}"
-          f"\n| max_step:  {max_step:4}, target_return: {target_return}") if if_print else None
-    return env_name, state_dim, action_dim, action_max, max_step, if_discrete, target_return
-
+    print(
+        f"\n| env_name:  {env_name}, action if_discrete: {if_discrete}"
+        f"\n| state_dim: {state_dim:4}, action_dim: {action_dim}, action_max: {action_max}"
+        f"\n| max_step:  {max_step:4}, target_return: {target_return}"
+    ) if if_print else None
+    return (
+        env_name,
+        state_dim,
+        action_dim,
+        action_max,
+        max_step,
+        if_discrete,
+        target_return,
+    )

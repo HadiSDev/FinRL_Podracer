@@ -1,20 +1,21 @@
 import sys
-import gym
+import gymnasium as gym
 
 from elegantrl.train.run import train_and_evaluate, train_and_evaluate_mp
 from elegantrl.train.config import Arguments
 from elegantrl.agents.AgentDQN import AgentDQN
-from elegantrl.agents.AgentDuelingDQN import AgentDuelingDQN
 from elegantrl.agents.AgentDoubleDQN import AgentDoubleDQN
 from elegantrl.agents.AgentDuelingDoubleDQN import AgentDuelingDoubleDQN
 
 
 def demo_discrete_action_off_policy(gpu_id):
-    env_name = ['CartPole-v0',
-                'LunarLander-v2', ][1]
-    agent_class = [AgentDQN, AgentDuelingDQN, AgentDoubleDQN, AgentDuelingDoubleDQN][3]
+    env_name = [
+        "CartPole-v0",
+        "LunarLander-v2",
+    ][1]
+    agent_class = [AgentDQN, AgentDoubleDQN, AgentDuelingDoubleDQN][3]
 
-    if env_name == 'CartPole-v0':
+    if env_name == "CartPole-v0":
         """
         ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         1  2.15e+02    9.00 |    9.00    0.7      9     1 |    1.00   1.00   0.02
@@ -25,24 +26,24 @@ def demo_discrete_action_off_policy(gpu_id):
         # get_gym_env_args(env=env, if_print=True)
         env_func = gym.make
         env_args = {
-            'env_num': 1,
-            'env_name': 'CartPole-v0',
-            'max_step': 200,
-            'state_dim': 4,
-            'action_dim': 2,
-            'if_discrete': True,
-            'target_return': 195.0,
+            "env_num": 1,
+            "env_name": "CartPole-v0",
+            "max_step": 200,
+            "state_dim": 4,
+            "action_dim": 2,
+            "if_discrete": True,
+            "target_return": 195.0,
         }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
 
         args.target_step = args.max_step
-        args.net_dim = 2 ** 7
+        args.net_dim = 2**7
         args.batch_size = args.net_dim
 
         args.gamma = 0.97
-        args.eval_times = 2 ** 3
-        args.eval_gap = 2 ** 4
-    elif env_name == 'LunarLander-v2':
+        args.eval_times = 2**3
+        args.eval_gap = 2**4
+    elif env_name == "LunarLander-v2":
         """
         ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
         1  4.17e+03 -571.17 | -571.17  134.8     68     9 |   -1.84  25.04  -0.18
@@ -55,7 +56,7 @@ def demo_discrete_action_off_policy(gpu_id):
         1  6.50e+05  193.18 |  138.69   46.5    880   224 |    0.05   0.35   6.63
         1  6.64e+05  236.45 |  236.45   26.6    396   137 |    0.10   0.38  10.10
         | UsedTime:    3149 |
-        
+
         CPU Win10 AgentDuelingDoubleDQN
         ################################################################################
         ID     Step    maxR |    avgR   stdR   avgS  stdS |    expR   objC   etc.
@@ -75,20 +76,22 @@ def demo_discrete_action_off_policy(gpu_id):
         | ReplayBuffer save in: ./LunarLander-v2_DuelingDoubleDQN_0/replay_0.npz
         """
         env_func = gym.make
-        env_args = {'env_num': 1,
-                    'env_name': 'LunarLander-v2',
-                    'max_step': 1000,
-                    'state_dim': 8,
-                    'action_dim': 4,
-                    'if_discrete': True,
-                    'target_return': 200, }
+        env_args = {
+            "env_num": 1,
+            "env_name": "LunarLander-v2",
+            "max_step": 1000,
+            "state_dim": 8,
+            "action_dim": 4,
+            "if_discrete": True,
+            "target_return": 200,
+        }
         args = Arguments(agent_class, env_func=env_func, env_args=env_args)
         args.target_step = args.max_step
-        args.reward_scale = 2 ** -2
+        args.reward_scale = 2**-2
         args.gamma = 0.99
-        args.eval_times = 2 ** 4
+        args.eval_times = 2**4
     else:
-        raise ValueError('env_name:', env_name)
+        raise ValueError("env_name:", env_name)
 
     args.learner_gpus = gpu_id
     args.random_seed += gpu_id
@@ -100,7 +103,7 @@ def demo_discrete_action_off_policy(gpu_id):
         train_and_evaluate_mp(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     GPU_ID = int(sys.argv[1] if len(sys.argv) > 1 else 0)
 
     demo_discrete_action_off_policy(GPU_ID)

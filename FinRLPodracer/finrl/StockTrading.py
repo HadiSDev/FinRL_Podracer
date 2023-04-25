@@ -1,5 +1,5 @@
 import os
-import gym
+import gymnasium as gym
 import torch
 import numpy as np
 import pandas as pd
@@ -7,23 +7,44 @@ import pandas as pd
 from abc import ABC
 from numpy import random as rd
 
-gym.logger.set_level(40)  # Block warning: 'WARN: Box bound precision lowered by casting to float32'
+gym.logger.set_level(
+    40
+)  # Block warning: 'WARN: Box bound precision lowered by casting to float32'
 
 
 class StockEnvNAS89(gym.Env, ABC):
-    metadata = {'render.modes': ['human']}  # gym.Env
+    metadata = {"render.modes": ["human"]}  # gym.Env
 
-    def __init__(self, cwd='./envs/finrl', gamma=0.999, turbulence_thresh=30, min_stock_rate=0.1,
-                 max_stock=1e2, initial_capital=1e6, buy_cost_pct=1e-3, sell_cost_pct=1e-3,
-                 start_date='2008-03-19', end_date='2016-01-01', data_gap=4, reward_scaling=2 ** -13,
-                 ticker_list=None, tech_indicator_list=None, initial_stocks=None, if_eval=False):
-        cwd = '.'
-
+    def __init__(
+        self,
+        cwd="./FinRLPodracer/finrl",
+        gamma=0.999,
+        turbulence_thresh=30,
+        min_stock_rate=0.1,
+        max_stock=1e2,
+        initial_capital=1e6,
+        buy_cost_pct=1e-3,
+        sell_cost_pct=1e-3,
+        start_date="2008-03-19",
+        end_date="2016-01-01",
+        data_gap=4,
+        reward_scaling=2**-13,
+        ticker_list=None,
+        tech_indicator_list=None,
+        initial_stocks=None,
+        if_eval=False,
+    ):
         self.min_stock_rate = min_stock_rate
-        beg_i, mid_i, end_i = 0, int(10 * 2 ** 15), int(528026)  # 62%
+        beg_i, mid_i, end_i = 0, int(10 * 2**15), int(528026)  # 62%
 
         (i0, i1) = (mid_i, end_i) if if_eval else (beg_i, mid_i)
-        data_arrays = self.load_data(cwd, ticker_list, tech_indicator_list, start_date, end_date, )
+        data_arrays = self.load_data(
+            cwd,
+            ticker_list,
+            tech_indicator_list,
+            start_date,
+            end_date,
+        )
         data_arrays = [ary[i0:i1:data_gap] for ary in data_arrays]
         self.price_ary, self.tech_ary, turbulence_ary = data_arrays
 
@@ -31,9 +52,11 @@ class StockEnvNAS89(gym.Env, ABC):
         # self.price_ary: mean, std, min, max = 137, 180, 1.75, 2050
         # self.tech_ary:  mean, std, min, max = 81, 119, -197, 2048
         # turbulence_ary: mean, std, min, max = 1.12, 2.8, 0, 37.5
-        self.tech_ary = self.tech_ary * 2 ** -7
+        self.tech_ary = self.tech_ary * 2**-7
         self.turbulence_bool = (turbulence_ary > turbulence_thresh).astype(np.float32)
-        self.turbulence_ary = (self.sigmoid_sign(turbulence_ary, turbulence_thresh) * 2 ** -5).astype(np.float32)
+        self.turbulence_ary = (
+            self.sigmoid_sign(turbulence_ary, turbulence_thresh) * 2**-5
+        ).astype(np.float32)
 
         stock_dim = self.price_ary.shape[1]
         self.gamma = gamma
@@ -42,7 +65,11 @@ class StockEnvNAS89(gym.Env, ABC):
         self.sell_cost_pct = sell_cost_pct
         self.reward_scaling = reward_scaling
         self.initial_capital = initial_capital
-        self.initial_stocks = np.zeros(stock_dim, dtype=np.float32) if initial_stocks is None else initial_stocks
+        self.initial_stocks = (
+            np.zeros(stock_dim, dtype=np.float32)
+            if initial_stocks is None
+            else initial_stocks
+        )
 
         # reset()
         self.day = None
@@ -53,7 +80,7 @@ class StockEnvNAS89(gym.Env, ABC):
         self.initial_total_asset = None
 
         # environment information
-        self.env_name = 'StockNAS89'
+        self.env_name = "StockNAS89"
         # self.state_dim = 1 + 2 + 2 * stock_dim + self.tech_ary.shape[1]
         # # amount + (turbulence, turbulence_bool) + (price, stock) * stock_dim + tech_dim
         self.state_dim = 1 + 2 + 3 * stock_dim + self.tech_ary.shape[1]
@@ -66,16 +93,24 @@ class StockEnvNAS89(gym.Env, ABC):
         self.episode_return = 0.0
 
         # gym.Env
-        self.observation_space = gym.spaces.Box(low=-500, high=500, shape=(self.state_dim,), dtype=np.float32)
-        self.action_space = gym.spaces.Box(low=-1, high=1, shape=(self.action_dim,), dtype=np.float32)
+        self.observation_space = gym.spaces.Box(
+            low=-500, high=500, shape=(self.state_dim,), dtype=np.float32
+        )
+        self.action_space = gym.spaces.Box(
+            low=-1, high=1, shape=(self.action_dim,), dtype=np.float32
+        )
 
     def reset(self):
         self.day = 0
         price = self.price_ary[self.day]
 
-        self.stocks = (self.initial_stocks + rd.randint(0, 64, size=self.initial_stocks.shape)).astype(np.float32)
+        self.stocks = (
+            self.initial_stocks + rd.randint(0, 64, size=self.initial_stocks.shape)
+        ).astype(np.float32)
         self.stocks_cd = np.zeros_like(self.stocks)
-        self.amount = self.initial_capital * rd.uniform(0.95, 1.05) - (self.stocks * price).sum()
+        self.amount = (
+            self.initial_capital * rd.uniform(0.95, 1.05) - (self.stocks * price).sum()
+        )
 
         self.total_asset = self.amount + (self.stocks * price).sum()
         self.initial_total_asset = self.total_asset
@@ -95,13 +130,19 @@ class StockEnvNAS89(gym.Env, ABC):
                 if price[index] > 0:  # Sell only if current asset is > 0
                     sell_num_shares = min(self.stocks[index], -actions[index])
                     self.stocks[index] -= sell_num_shares
-                    self.amount += price[index] * sell_num_shares * (1 - self.sell_cost_pct)
+                    self.amount += (
+                        price[index] * sell_num_shares * (1 - self.sell_cost_pct)
+                    )
                     self.stocks_cd[index] = 0
             for index in np.where(actions > min_action)[0]:  # buy_index:
-                if price[index] > 0:  # Buy only if the price is > 0 (no missing data in this particular date)
+                if (
+                    price[index] > 0
+                ):  # Buy only if the price is > 0 (no missing data in this particular date)
                     buy_num_shares = min(self.amount // price[index], actions[index])
                     self.stocks[index] += buy_num_shares
-                    self.amount -= price[index] * buy_num_shares * (1 + self.buy_cost_pct)
+                    self.amount -= (
+                        price[index] * buy_num_shares * (1 + self.buy_cost_pct)
+                    )
                     self.stocks_cd[index] = 0
 
         else:  # sell all when turbulence
@@ -123,32 +164,53 @@ class StockEnvNAS89(gym.Env, ABC):
         return state, reward, done, dict()
 
     def get_state(self, price):
-        amount = np.array(max(self.amount, 1e4) * (2 ** -12), dtype=np.float32)
-        scale = np.array(2 ** -6, dtype=np.float32)
-        return np.hstack((amount,
-                          self.turbulence_ary[self.day],
-                          self.turbulence_bool[self.day],
-                          price * scale,
-                          self.stocks * scale,
-                          self.stocks_cd,
-                          self.tech_ary[self.day],
-                          ))  # state.astype(np.float32)
+        amount = np.array(max(self.amount, 1e4) * (2**-12), dtype=np.float32)
+        scale = np.array(2**-6, dtype=np.float32)
+        return np.hstack(
+            (
+                amount,
+                self.turbulence_ary[self.day],
+                self.turbulence_bool[self.day],
+                price * scale,
+                self.stocks * scale,
+                self.stocks_cd,
+                self.tech_ary[self.day],
+            )
+        )  # state.astype(np.float32)
 
-    def load_data(self, cwd='./envs/finrl', ticker_list=None, tech_indicator_list=None,
-                  start_date='2016-01-03', end_date='2021-05-27'):
-        data_name = 'NAS89_minute'
-        raw_data1_path = f'{cwd}/StockEnv_{data_name}_raw_data1.df'
-        raw_data2_path = f'{cwd}/StockEnv_{data_name}_raw_data2.df'
-        data_path_array = f'{cwd}/StockEnv_{data_name}_arrays_float16.npz'
-        data_turb_array = f'{cwd}/StockEnv_{data_name}_turbulence.npy'
+    def load_data(
+        self,
+        cwd="./FinRLPodracer/finrl",
+        ticker_list=None,
+        tech_indicator_list=None,
+        start_date="2016-01-03",
+        end_date="2021-05-27",
+    ):
+        data_name = "NAS89_minute"
+        raw_data1_path = f"{cwd}/StockEnv_{data_name}_raw_data1.df"
+        raw_data2_path = f"{cwd}/StockEnv_{data_name}_raw_data2.df"
+        data_path_array = f"{cwd}/StockEnv_{data_name}_arrays_float16.npz"
+        data_turb_array = f"{cwd}/StockEnv_{data_name}_turbulence.npy"
 
-        turbulence_ary = np.load(data_turb_array)  # turbulence_ary.shape = (1358, ). std, min, max = 3, 0, 65.2
+        turbulence_ary = np.load(
+            data_turb_array
+        )  # turbulence_ary.shape = (1358, ). std, min, max = 3, 0, 65.2
         turbulence_ary = turbulence_ary.repeat(390)  # 13580*390 = 529620
         turbulence_ary = turbulence_ary[-528026:]  # 15926 + 528026 = 528026
 
-        tech_indicator_list = [
-            'macd', 'boll_ub', 'boll_lb', 'rsi_30', 'dx_30', 'close_30_sma', 'close_60_sma'
-        ] if tech_indicator_list is None else tech_indicator_list
+        tech_indicator_list = (
+            [
+                "macd",
+                "boll_ub",
+                "boll_lb",
+                "rsi_30",
+                "dx_30",
+                "close_30_sma",
+                "close_60_sma",
+            ]
+            if tech_indicator_list is None
+            else tech_indicator_list
+        )
         # tech_indicator_list = [
         #     'macd', 'boll_ub', 'boll_lb', 'rsi_30', 'cci_30', 'dx_30', 'close_30_sma', 'close_60_sma'
         # ] if tech_indicator_list is None else tech_indicator_list
@@ -158,16 +220,86 @@ class StockEnvNAS89(gym.Env, ABC):
         #     'INTC', 'WMT', 'IBM', 'MRK', 'UNH', 'KO', 'CAT', 'TRV', 'JNJ', 'CVX', 'MCD',
         #     'VZ', 'CSCO', 'XOM', 'BA', 'MMM', 'PFE', 'WBA', 'DD'
         # ] if ticker_list is None else ticker_list  # finrl.config.DOW_30_TICKER
-        ticker_list = [
-            'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK', 'ALGN', 'ALXN', 'AMAT', 'AMD', 'AMGN',
-            'AMZN', 'ASML', 'ATVI', 'BIIB', 'BKNG', 'BMRN', 'CDNS', 'CERN', 'CHKP', 'CMCSA',
-            'COST', 'CSCO', 'CSX', 'CTAS', 'CTSH', 'CTXS', 'DLTR', 'EA', 'EBAY', 'FAST',
-            'FISV', 'GILD', 'HAS', 'HSIC', 'IDXX', 'ILMN', 'INCY', 'INTC', 'INTU', 'ISRG',
-            'JBHT', 'KLAC', 'LRCX', 'MAR', 'MCHP', 'MDLZ', 'MNST', 'MSFT', 'MU', 'MXIM',
-            'NLOK', 'NTAP', 'NTES', 'NVDA', 'ORLY', 'PAYX', 'PCAR', 'PEP', 'QCOM', 'REGN',
-            'ROST', 'SBUX', 'SIRI', 'SNPS', 'SWKS', 'TTWO', 'TXN', 'VRSN', 'VRTX', 'WBA',
-            'WDC', 'WLTW', 'XEL', 'XLNX'
-        ] if ticker_list is None else ticker_list  # finrl.config.NAS_74_TICKER
+        ticker_list = (
+            [
+                "AAPL",
+                "ADBE",
+                "ADI",
+                "ADP",
+                "ADSK",
+                "ALGN",
+                "ALXN",
+                "AMAT",
+                "AMD",
+                "AMGN",
+                "AMZN",
+                "ASML",
+                "ATVI",
+                "BIIB",
+                "BKNG",
+                "BMRN",
+                "CDNS",
+                "CERN",
+                "CHKP",
+                "CMCSA",
+                "COST",
+                "CSCO",
+                "CSX",
+                "CTAS",
+                "CTSH",
+                "CTXS",
+                "DLTR",
+                "EA",
+                "EBAY",
+                "FAST",
+                "FISV",
+                "GILD",
+                "HAS",
+                "HSIC",
+                "IDXX",
+                "ILMN",
+                "INCY",
+                "INTC",
+                "INTU",
+                "ISRG",
+                "JBHT",
+                "KLAC",
+                "LRCX",
+                "MAR",
+                "MCHP",
+                "MDLZ",
+                "MNST",
+                "MSFT",
+                "MU",
+                "MXIM",
+                "NLOK",
+                "NTAP",
+                "NTES",
+                "NVDA",
+                "ORLY",
+                "PAYX",
+                "PCAR",
+                "PEP",
+                "QCOM",
+                "REGN",
+                "ROST",
+                "SBUX",
+                "SIRI",
+                "SNPS",
+                "SWKS",
+                "TTWO",
+                "TXN",
+                "VRSN",
+                "VRTX",
+                "WBA",
+                "WDC",
+                "WLTW",
+                "XEL",
+                "XLNX",
+            ]
+            if ticker_list is None
+            else ticker_list
+        )  # finrl.config.NAS_74_TICKER
         # ticker_list = [
         #     'AMGN', 'AAPL', 'AMAT', 'INTC', 'PCAR', 'PAYX', 'MSFT', 'ADBE', 'CSCO', 'XLNX',
         #     'QCOM', 'COST', 'SBUX', 'FISV', 'CTXS', 'INTU', 'AMZN', 'EBAY', 'BIIB', 'CHKP',
@@ -186,16 +318,17 @@ class StockEnvNAS89(gym.Env, ABC):
         # check_ticker_list = set(raw_df.loc.obj.tic[j:j + 200].tolist())
         # print(len(check_ticker_list), check_ticker_list)
 
-        '''get: train_price_ary, train_tech_ary, eval_price_ary, eval_tech_ary'''
+        """get: train_price_ary, train_tech_ary, eval_price_ary, eval_tech_ary"""
         if os.path.exists(data_path_array):
             load_dict = np.load(data_path_array, allow_pickle=True)
 
-            price_ary = load_dict['price_ary'].astype(np.float32)
-            tech_ary = load_dict['tech_ary'].astype(np.float32)
+            price_ary = load_dict["price_ary"].astype(np.float32)
+            tech_ary = load_dict["tech_ary"].astype(np.float32)
             # turbulence_ary = load_dict['turbulence_ary'].astype(np.float32)
         else:
-            raw_data2_df = self.get_raw_data2(raw_data1_path, raw_data2_path,
-                                              ticker_list, tech_indicator_list)
+            raw_data2_df = self.get_raw_data2(
+                raw_data1_path, raw_data2_path, ticker_list, tech_indicator_list
+            )
 
             # def data_split(df, start, end):
             #     data = df[(df.date >= start) & (df.date < end)]
@@ -207,34 +340,43 @@ class StockEnvNAS89(gym.Env, ABC):
 
             # print(raw_data2_df.date)  # to show the start_date and end_date
             # print(raw_data2_df.columns)  # to show the items name
-            price_ary, tech_ary = self.convert_df_to_ary(raw_data2_df, tech_indicator_list)
-            price_ary, tech_ary = self.deal_with_split_or_merge_shares(price_ary, tech_ary)
+            price_ary, tech_ary = self.convert_df_to_ary(
+                raw_data2_df, tech_indicator_list
+            )
+            price_ary, tech_ary = self.deal_with_split_or_merge_shares(
+                price_ary, tech_ary
+            )
 
-            np.savez_compressed(data_path_array,
-                                price_ary=price_ary.astype(np.float16),
-                                tech_ary=tech_ary.astype(np.float16), )
+            np.savez_compressed(
+                data_path_array,
+                price_ary=price_ary.astype(np.float16),
+                tech_ary=tech_ary.astype(np.float16),
+            )
 
         return price_ary, tech_ary, turbulence_ary
 
-    def get_raw_data2(self, raw_data1_path, raw_data2_path,
-                      ticker_list, tech_indicator_list):
+    def get_raw_data2(
+        self, raw_data1_path, raw_data2_path, ticker_list, tech_indicator_list
+    ):
         if os.path.exists(raw_data2_path):
             processed_df = pd.read_pickle(raw_data2_path)  # DataFrame of Pandas
             # print('| processed_df.columns.values:', processed_df.columns.values)
             print(f"| load data: {raw_data2_path}")
         else:
             print("| FeatureEngineer: start processing data (2 minutes)")
-            fe = FeatureEngineer(use_turbulence=True,
-                                 user_defined_feature=False,
-                                 use_technical_indicator=True,
-                                 tech_indicator_list=tech_indicator_list, )
+            fe = FeatureEngineer(
+                use_turbulence=True,
+                user_defined_feature=False,
+                use_technical_indicator=True,
+                tech_indicator_list=tech_indicator_list,
+            )
             raw_df = self.get_raw_data(raw_data1_path, ticker_list)
 
             processed_df = fe.preprocess_data(raw_df)
             processed_df.to_pickle(raw_data2_path)
             print("| FeatureEngineer: finish processing data")
 
-        '''you can also load from csv'''
+        """you can also load from csv"""
         # processed_data_path = f'{cwd}/dow_30_2021_minute.csv'
         # processed_data_path = f'{cwd}/dow_30_daily_2000_2021.csv'
         # if os.path.exists(processed_data_path):
@@ -260,22 +402,27 @@ class StockEnvNAS89(gym.Env, ABC):
             for i in range(self.max_step):
                 s_tensor = _torch.as_tensor((state,), device=device)
                 a_tensor = act(s_tensor)  # action_tanh = act.forward()
-                action = a_tensor.detach().cpu().numpy()[0]  # not need detach(), because with torch.no_grad() outside
+                action = (
+                    a_tensor.detach().cpu().numpy()[0]
+                )  # not need detach(), because with torch.no_grad() outside
                 state, reward, done, _ = self.step(action)
 
-                total_asset = self.amount + (self.price_ary[self.day] * self.stocks).sum()
+                total_asset = (
+                    self.amount + (self.price_ary[self.day] * self.stocks).sum()
+                )
                 episode_return = total_asset / self.initial_total_asset
                 episode_returns.append(episode_return)
                 if done:
                     break
 
         import matplotlib.pyplot as plt
+
         plt.plot(episode_returns)
         plt.grid()
-        plt.title('cumulative return')
-        plt.xlabel('day')
-        plt.xlabel('multiple of initial_account')
-        plt.savefig(f'{cwd}/cumulative_return.jpg')
+        plt.title("cumulative return")
+        plt.xlabel("day")
+        plt.xlabel("multiple of initial_account")
+        plt.savefig(f"{cwd}/cumulative_return.jpg")
         print(f"| draw_cumulative_return: save in {cwd}/cumulative_return.jpg")
         return episode_returns
 
@@ -303,7 +450,7 @@ class StockEnvNAS89(gym.Env, ABC):
             # plt.plot(x)
             for i in x_where:
                 # print(j, i, x[i] / x[i + 1])
-                x[i + 1:] *= x[i] / x[i + 1]
+                x[i + 1 :] *= x[i] / x[i + 1]
             # plt.plot(x)
             # plt.show()
             price_ary[:, j] = x
@@ -338,9 +485,11 @@ class StockEnvNAS89(gym.Env, ABC):
             print(f"| load data: {raw_data_path}")
         else:
             print("| YahooDownloader: start downloading data (1 minute)")
-            raw_df = YahooDownloader(start_date="2000-01-01",
-                                     end_date="2021-01-01",
-                                     ticker_list=ticker_list, ).fetch_data()
+            raw_df = YahooDownloader(
+                start_date="2000-01-01",
+                end_date="2021-01-01",
+                ticker_list=ticker_list,
+            ).fetch_data()
             raw_df.to_pickle(raw_data_path)
             print("| YahooDownloader: finish downloading data")
         return raw_df
@@ -357,11 +506,13 @@ class StockEnvNAS89(gym.Env, ABC):
             tech_items_flatten = sum(tech_items, [])
             tech_ary.append(tech_items_flatten)
             price_ary.append(item.close)  # adjusted close price (adjcp)
-            print(';;', type(item.turbulence), len(item.turbulence))
+            print(";;", type(item.turbulence), len(item.turbulence))
 
         tech_ary = np.array(tech_ary)
         price_ary = np.array(price_ary)
-        print(f'| ary.shape price, tech, turbulence: {price_ary.shape} {tech_ary.shape}')
+        print(
+            f"| ary.shape price, tech, turbulence: {price_ary.shape} {tech_ary.shape}"
+        )
         return price_ary, tech_ary
 
     @staticmethod
@@ -379,13 +530,14 @@ def check_stock_trading_env():
     action_dim = env.action_dim
 
     state = env.reset()
-    print('| check_stock_trading_env, state_dim', len(state))
+    print("| check_stock_trading_env, state_dim", len(state))
 
     from time import time
+
     timer = time()
 
     # ============================================================
-    policy_name = 'Random Action 1e-2'
+    policy_name = "Random Action 1e-2"
     step = 1
     done = False
     episode_return = 0
@@ -407,7 +559,7 @@ def check_stock_trading_env():
     print(f"| env episode return \t{env.episode_return:.3e}")
 
     # ============================================================
-    policy_name = 'Buy  4 Action'
+    policy_name = "Buy  4 Action"
     step = 1
     done = False
     episode_return = 0
@@ -430,7 +582,7 @@ def check_stock_trading_env():
     print(f"| env episode return \t{env.episode_return:.3e}")
 
     # ============================================================
-    '''draw_cumulative_return'''
+    """draw_cumulative_return"""
     # from FinRLPodracer.elegantrl.agent import AgentPPO
     # from FinRLPodracer.elegantrl.run import Arguments
     # args = Arguments(if_on_policy=True)
@@ -468,13 +620,13 @@ class YahooDownloader:
     """
 
     def __init__(self, start_date: str, end_date: str, ticker_list: list):
-
         self.start_date = start_date
         self.end_date = end_date
         self.ticker_list = ticker_list
 
     def fetch_data(self) -> pd.DataFrame:
         import yfinance as yf  # Yahoo Finance
+
         """Fetches data from Yahoo API
         Parameters
         ----------
@@ -490,7 +642,7 @@ class YahooDownloader:
         for tic in self.ticker_list:
             temp_df = yf.download(tic, start=self.start_date, end=self.end_date)
             temp_df["tic"] = tic
-            data_df = data_df.append(temp_df)
+            data_df = pd.concat([data_df, temp_df])
         # reset the index, we want to use numbers as index instead of dates
         data_df = data_df.reset_index()
         try:
@@ -521,7 +673,7 @@ class YahooDownloader:
         print("Shape of DataFrame: ", data_df.shape)
         # print("Display DataFrame: ", data_df.head())
 
-        data_df = data_df.sort_values(by=['date', 'tic']).reset_index(drop=True)
+        data_df = data_df.sort_values(by=["date", "tic"]).reset_index(drop=True)
 
         return data_df
 
@@ -549,11 +701,11 @@ class FeatureEngineer:
     """
 
     def __init__(
-            self,
-            use_technical_indicator=True,
-            tech_indicator_list=None,  # config.TECHNICAL_INDICATORS_LIST,
-            use_turbulence=False,
-            user_defined_feature=False,
+        self,
+        use_technical_indicator=True,
+        tech_indicator_list=None,  # config.TECHNICAL_INDICATORS_LIST,
+        use_turbulence=False,
+        user_defined_feature=False,
     ):
         self.use_technical_indicator = use_technical_indicator
         self.tech_indicator_list = tech_indicator_list
@@ -595,7 +747,7 @@ class FeatureEngineer:
         from stockstats import StockDataFrame as Sdf  # for Sdf.retype
 
         df = data.copy()
-        df = df.sort_values(by=['tic', 'date'])
+        df = df.sort_values(by=["tic", "date"])
         stock = Sdf.retype(df.copy())
         unique_ticker = stock.tic.unique()
 
@@ -605,15 +757,19 @@ class FeatureEngineer:
                 try:
                     temp_indicator = stock[stock.tic == unique_ticker[i]][indicator]
                     temp_indicator = pd.DataFrame(temp_indicator)
-                    temp_indicator['tic'] = unique_ticker[i]
-                    temp_indicator['date'] = df[df.tic == unique_ticker[i]]['date'].to_list()
+                    temp_indicator["tic"] = unique_ticker[i]
+                    temp_indicator["date"] = df[df.tic == unique_ticker[i]][
+                        "date"
+                    ].to_list()
                     indicator_df = indicator_df.append(
                         temp_indicator, ignore_index=True
                     )
                 except Exception as e:
                     print(e)
-            df = df.merge(indicator_df[['tic', 'date', indicator]], on=['tic', 'date'], how='left')
-        df = df.sort_values(by=['date', 'tic'])
+            df = df.merge(
+                indicator_df[["tic", "date", indicator]], on=["tic", "date"], how="left"
+            )
+        df = df.sort_values(by=["date", "tic"])
         return df
 
     def add_turbulence(self, data):
@@ -664,12 +820,16 @@ class FeatureEngineer:
             hist_price = df_price_pivot[
                 (df_price_pivot.index < unique_date[i])
                 & (df_price_pivot.index >= unique_date[i - 252])
-                ]
+            ]
             # Drop tickers which has number missing values more than the "oldest" ticker
-            filtered_hist_price = hist_price.iloc[hist_price.isna().sum().min():].dropna(axis=1)
+            filtered_hist_price = hist_price.iloc[
+                hist_price.isna().sum().min() :
+            ].dropna(axis=1)
 
             cov_temp = filtered_hist_price.cov()
-            current_temp = current_price[[x for x in filtered_hist_price]] - np.mean(filtered_hist_price, axis=0)
+            current_temp = current_price[[x for x in filtered_hist_price]] - np.mean(
+                filtered_hist_price, axis=0
+            )
             temp = current_temp.values.dot(np.linalg.pinv(cov_temp)).dot(
                 current_temp.values.T
             )
@@ -700,20 +860,21 @@ def load_and_run_agent():
     # cwd = '/home/yonv/code/ElegantRL/StockNAS74_1.45'
     # env = StockEnvNAS74(if_eval=True, turbulence_thresh=700, min_stock_rate=0.0)
     # save_path = './nas74-daily.df'
-    cwd = '/home/yonv/code/ElegantRL/StockNAS89_3.63'
+    cwd = "/home/yonv/code/ElegantRL/StockNAS89_3.63"
     env = StockEnvNAS89(if_eval=True, turbulence_thresh=15, min_stock_rate=0.12)
-    save_path = './nas89-minute-.df'
+    save_path = "./nas89-minute-.df"
 
     max_step = env.max_step
     state_dim = env.state_dim
     action_dim = env.action_dim
 
-    '''RL-PPO'''
-    policy_name = 'RL-PPO'
+    """RL-PPO"""
+    policy_name = "RL-PPO"
     if policy_name:
-        net_dim = 2 ** 9  # todo
+        net_dim = 2**9  # todo
 
         from FinRLPodracer.elegantrl.agent import AgentPPO
+
         agent = AgentPPO()
         agent.init(net_dim, state_dim, action_dim)
         agent.save_or_load_policy(cwd, if_save=False)
@@ -722,7 +883,9 @@ def load_and_run_agent():
         return_list = list()
         for _ in trange(max_step):
             env.amount *= 1.000223
-            tensor_state = torch.as_tensor((state,), dtype=torch.float32, device=agent.device)
+            tensor_state = torch.as_tensor(
+                (state,), dtype=torch.float32, device=agent.device
+            )
             tensor_action = agent.act(tensor_state)
             action = tensor_action.detach().cpu().numpy()[0]
             state, reward, done, _ = env.step(action)
@@ -730,10 +893,10 @@ def load_and_run_agent():
             return_list.append(env.total_asset / env.initial_total_asset)
 
         plt.plot(return_list[:-1], label=policy_name)
-        print(f'| episode return {policy_name:>16}: {env.episode_return:.3f}')
-        df_value = pd.DataFrame({'account_value': return_list})
+        print(f"| episode return {policy_name:>16}: {env.episode_return:.3f}")
+        df_value = pd.DataFrame({"account_value": return_list})
         df_value.to_pickle(save_path)
-        print('| Save in', save_path)
+        print("| Save in", save_path)
 
     policy_name = 0  # 'keepBuying 32'
     if policy_name:
@@ -745,7 +908,7 @@ def load_and_run_agent():
             state, reward, done, _ = env.step(action)
             return_list.append(env.total_asset / env.initial_total_asset)
         plt.plot(return_list[:-1], label=policy_name)
-        print(f'| episode return {policy_name:>16}: {env.episode_return:.3f}')
+        print(f"| episode return {policy_name:>16}: {env.episode_return:.3f}")
 
     policy_name = 0  # 'random action'
     if policy_name:
@@ -756,14 +919,14 @@ def load_and_run_agent():
             state, reward, done, _ = env.step(action)
             return_list.append(env.total_asset / env.initial_total_asset)
         plt.plot(return_list[:-1], label=policy_name)
-        print(f'| episode return {policy_name:>16}: {env.episode_return:.3f}')
+        print(f"| episode return {policy_name:>16}: {env.episode_return:.3f}")
 
     plt.legend()
     plt.grid()
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     check_stock_trading_env()
     # load_and_run_agent()
     # StockEnvNAS74()

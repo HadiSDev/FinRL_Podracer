@@ -1,11 +1,11 @@
-version: "3.8"
+version: "3.10"
 
 services:
   rlsmartagent-dev:
     image: idea/rlsmartagent-dev:v1.0
     build:
       context: ../
-      dockerfile: docker/rlsmartagent-dev.df
+      dockerfile: docker/Dockerfile.rlsmartagent.dev
     restart: unless-stopped
     container_name: rlsmartagent-dev
     hostname: rlsmartagent-dev
